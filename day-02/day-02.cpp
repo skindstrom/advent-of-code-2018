@@ -14,7 +14,17 @@ bool hasTwoEqualLetters(const BoxId &);
 bool hasThreeEqualLetters(const BoxId &);
 bool hasEqualLettersCount(const BoxId &, int);
 
-int main() { std::cout << "Part 1: " << checksum(readBoxIds()) << '\n'; }
+std::string
+equalLettersInCorrectBoxIds(const std::pair<BoxId, BoxId> &correctBoxIds);
+std::pair<BoxId, BoxId> findCorrectBoxIds(const std::vector<BoxId> &ids);
+bool differsByOneCharacter(const BoxId &first, const BoxId &second);
+
+int main() {
+  std::cout << "Part 1: " << checksum(readBoxIds()) << '\n';
+  std::cout << "Part 2: "
+            << equalLettersInCorrectBoxIds(findCorrectBoxIds(readBoxIds()))
+            << '\n';
+}
 
 std::vector<BoxId> readBoxIds() {
   std::vector<BoxId> boxIds;
@@ -58,4 +68,58 @@ bool hasEqualLettersCount(const BoxId &id, int requestedCount) {
       letterCount, [requestedCount](std::pair<Letter, int> letterCountPair) {
         return letterCountPair.second == requestedCount;
       });
+}
+
+std::string
+equalLettersInCorrectBoxIds(const std::pair<BoxId, BoxId> &correctBoxIds) {
+  std::string equalLetters;
+
+  auto [first, second] = correctBoxIds;
+
+  for (size_t i = 0; i < first.size(); ++i) {
+    if (first[i] == second[i]) {
+      equalLetters += first[i];
+    }
+  }
+
+  return equalLetters;
+}
+
+std::pair<BoxId, BoxId> findCorrectBoxIds(const std::vector<BoxId> &ids) {
+  std::pair<BoxId, BoxId> correctBoxIds;
+
+  bool found = false;
+  auto it = ids.cbegin();
+  auto const end = ids.cend();
+
+  while (!found && it != end) {
+    const auto other = std::find_if(it, end, [&it](const BoxId &id) {
+      return differsByOneCharacter(*it, id);
+    });
+
+    if (other != end) {
+      correctBoxIds = std::make_pair(*it, *other);
+      found = true;
+    }
+
+    ++it;
+  }
+
+  return correctBoxIds;
+}
+
+bool differsByOneCharacter(const BoxId &first, const BoxId &second) {
+  const int letterCount = first.size();
+  int notEqualCount = 0;
+  int letterIndex = 0;
+
+  while (notEqualCount <= 1 && letterIndex < letterCount) {
+    if (first[letterIndex] != second[letterIndex]) {
+      ++notEqualCount;
+    }
+
+    ++letterIndex;
+  }
+
+  return notEqualCount == 1;
 }
