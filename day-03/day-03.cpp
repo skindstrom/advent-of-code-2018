@@ -2,13 +2,15 @@
 #include <iostream>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/view/transform.hpp>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
-using BoxId = std::string;
+using ClaimId = std::string;
 
 struct Claim {
-  BoxId id{};
+  ClaimId id{};
   int startX{}, startY{};
   int sizeX{}, sizeY{};
 };
@@ -16,8 +18,13 @@ struct Claim {
 std::vector<Claim> readClaims();
 int overlappingClaimsCount(const std::vector<Claim> &claims);
 
+ClaimId findClaimWithoutOverlap(const std::vector<Claim> &claims);
+std::vector<std::vector<ClaimId>>
+claimPlacementMatrix(const std::vector<Claim> &claims);
+
 int main() {
   std::cout << "Part 1: " << overlappingClaimsCount(readClaims()) << '\n';
+  std::cout << "Part 2: " << findClaimWithoutOverlap(readClaims()) << '\n';
 }
 
 std::vector<Claim> readClaims() {
@@ -59,21 +66,47 @@ std::vector<Claim> readClaims() {
 }
 
 int overlappingClaimsCount(const std::vector<Claim> &claims) {
-  std::vector<int> counts(1000 * 1000);
+  auto placements = claimPlacementMatrix(claims);
 
-  ranges::for_each(claims, [&counts](const Claim &claim) {
+  return ranges::accumulate(
+      placements, 0, [](const int totalCount, const std::vector<ClaimId> ids) {
+        if (ids.size() <= 1) {
+          return totalCount;
+        }
+        return totalCount + 1;
+      });
+}
+
+ClaimId findClaimWithoutOverlap(const std::vector<Claim> &claims) {
+  std::unordered_set<ClaimId> claimsWithoutOverlap;
+  ranges::for_each(claims, [&claimsWithoutOverlap](const Claim &claim) {
+    claimsWithoutOverlap.emplace(claim.id);
+  });
+
+  ranges::for_each(claimPlacementMatrix(claims),
+                   [&claimsWithoutOverlap](const std::vector<ClaimId> &ids) {
+                     if (ids.size() > 1) {
+                       ranges::for_each(
+                           ids, [&claimsWithoutOverlap](const ClaimId &id) {
+                             claimsWithoutOverlap.erase(id);
+                           });
+                     }
+                   });
+
+  return *claimsWithoutOverlap.begin();
+}
+
+std::vector<std::vector<ClaimId>>
+claimPlacementMatrix(const std::vector<Claim> &claims) {
+  std::vector<std::vector<ClaimId>> placementMatrix(1000 * 1000);
+
+  ranges::for_each(claims, [&placementMatrix](const Claim &claim) {
     for (int x = claim.startX; x < claim.startX + claim.sizeX; ++x) {
       for (int y = claim.startY; y < claim.startY + claim.sizeY; ++y) {
-        ++counts.at(x * 1000 + y);
+        placementMatrix.at(x * 1000 + y).emplace_back(claim.id);
       }
     }
   });
 
-  return ranges::accumulate(counts, 0,
-                            [](const int totalCount, const int count) {
-                              if (count <= 1) {
-                                return totalCount;
-                              }
-                              return totalCount + 1;
-                            });
+  return placementMatrix;
 }
